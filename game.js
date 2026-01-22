@@ -249,21 +249,29 @@ function getLifeStage() {
     return stage;
 }
 
-function canRebirth() {
-    return getLifeStage().name === 'Ancient' || getLifeStage().name === 'Withering';
+function getLifespan() {
+    // Base lifespan of 1 year (365 days) + 0.1 days per nutrient
+    return 365 + Math.floor(gameState.resources.nutrients * 0.1);
+}
+
+function getCurrentAge() {
+    // Total days lived this life
+    return Math.floor((gameState.year - 1) * 365 + gameState.day);
+}
+
+function isLifespanExceeded() {
+    return getCurrentAge() >= getLifespan();
 }
 
 function doRebirth() {
-    if (!canRebirth()) return;
-
-    // Calculate new multipliers based on max levels
+    // Calculate new multipliers based on levels (5% per level)
     for (const key of Object.keys(GROWTH_STATS)) {
         const currentLevel = gameState.growthLevels[key] || 0;
         const maxLevel = Math.max(gameState.maxGrowthLevels[key] || 0, currentLevel);
         gameState.maxGrowthLevels[key] = maxLevel;
 
-        // Formula: 1 + maxLevel / 10
-        const newMultiplier = 1 + maxLevel / 10;
+        // Formula: 1 + maxLevel * 0.05 (5% per level)
+        const newMultiplier = 1 + maxLevel * 0.05;
         if (newMultiplier > gameState.rebirthMultipliers[key]) {
             gameState.rebirthMultipliers[key] = newMultiplier;
         }
@@ -332,6 +340,12 @@ function gameTick() {
     const currentDay = Math.floor(gameState.day);
     const dayChanged = currentDay !== previousDay;
 
+    // Check for death (lifespan exceeded)
+    if (isLifespanExceeded()) {
+        doRebirth();
+        return; // Skip rest of tick, fresh start next tick
+    }
+
     // Activity progress
     if (gameState.currentActivity && isActivityUnlocked(gameState.currentActivity)) {
         const rate = getActivityRate(gameState.currentActivity);
@@ -386,6 +400,7 @@ function gameTick() {
         renderTime();
         renderProgressBars();
         renderResources();
+        updateLifespanDisplay();
         lastRenderedDay = currentDay;
     }
 }
@@ -475,17 +490,39 @@ function updateGrowthLevelUp(growthKey) {
     document.getElementById('life-stage').textContent = stage.name;
     document.getElementById('total-levels').textContent = `Total Levels: ${totalLevels}`;
 
-    // Update rebirth button state if needed
-    const rebirthBtn = document.getElementById('rebirth-btn');
-    const rebirthInfo = document.getElementById('rebirth-info');
-    if (canRebirth()) {
-        rebirthBtn.disabled = false;
-    } else {
-        rebirthInfo.textContent = `Reach Ancient stage (100 total levels) to rebirth. Current: ${totalLevels}`;
-    }
+    // Update lifespan display
+    updateLifespanDisplay();
 
     // Check if any new activities/growth unlocked
     checkForNewUnlocks();
+}
+
+// Update lifespan display without full re-render
+function updateLifespanDisplay() {
+    const lifespan = getLifespan();
+    const currentAge = getCurrentAge();
+    const daysRemaining = Math.max(0, lifespan - currentAge);
+
+    const rebirthInfo = document.getElementById('rebirth-info');
+
+    let info = `<strong>Lifespan:</strong> ${currentAge} / ${lifespan} days (${daysRemaining} remaining)`;
+    info += `<br><br><strong>On death, you will gain:</strong>`;
+
+    let hasLevels = false;
+    for (const key of Object.keys(GROWTH_STATS)) {
+        const level = gameState.growthLevels[key];
+        if (level > 0) {
+            hasLevels = true;
+            const mult = 1 + level * 0.05;
+            info += `<br>${GROWTH_STATS[key].name}: ${mult.toFixed(2)}x`;
+        }
+    }
+
+    if (!hasLevels) {
+        info += `<br><em>Level up growth stats to gain multipliers!</em>`;
+    }
+
+    rebirthInfo.innerHTML = info;
 }
 
 // Check if new activities or growth stats have been unlocked
@@ -662,6 +699,9 @@ function updateGrowthSelection(prevKey, newKey) {
 function renderLifeStage() {
     const stage = getLifeStage();
     const totalLevels = getTotalLevels();
+    const lifespan = getLifespan();
+    const currentAge = getCurrentAge();
+    const daysRemaining = Math.max(0, lifespan - currentAge);
 
     document.getElementById('life-stage').textContent = stage.name;
     document.getElementById('total-levels').textContent = `Total Levels: ${totalLevels}`;
@@ -669,23 +709,28 @@ function renderLifeStage() {
     const rebirthBtn = document.getElementById('rebirth-btn');
     const rebirthInfo = document.getElementById('rebirth-info');
 
-    if (canRebirth()) {
-        rebirthBtn.disabled = false;
+    // Hide manual rebirth button - rebirth is automatic now
+    rebirthBtn.style.display = 'none';
 
-        // Calculate potential multipliers
-        let info = 'Rebirth will grant XP multipliers:';
-        for (const key of Object.keys(GROWTH_STATS)) {
-            const level = gameState.growthLevels[key];
-            if (level > 0) {
-                const mult = 1 + level / 10;
-                info += `<br>${GROWTH_STATS[key].name}: ${mult.toFixed(1)}x`;
-            }
+    // Show lifespan info and potential multipliers
+    let info = `<strong>Lifespan:</strong> ${currentAge} / ${lifespan} days (${daysRemaining} remaining)`;
+    info += `<br><br><strong>On death, you will gain:</strong>`;
+
+    let hasLevels = false;
+    for (const key of Object.keys(GROWTH_STATS)) {
+        const level = gameState.growthLevels[key];
+        if (level > 0) {
+            hasLevels = true;
+            const mult = 1 + level * 0.05; // 5% per level
+            info += `<br>${GROWTH_STATS[key].name}: ${mult.toFixed(2)}x`;
         }
-        rebirthInfo.innerHTML = info;
-    } else {
-        rebirthBtn.disabled = true;
-        rebirthInfo.textContent = `Reach Ancient stage (100 total levels) to rebirth. Current: ${totalLevels}`;
     }
+
+    if (!hasLevels) {
+        info += `<br><em>Level up growth stats to gain multipliers!</em>`;
+    }
+
+    rebirthInfo.innerHTML = info;
 }
 
 function renderStats() {
