@@ -340,8 +340,9 @@ function gameTick() {
         // Add resources
         gameState.resources[resource] += rate * deltaTime;
 
-        // Gain activity XP
-        gameState.activityXp[gameState.currentActivity] += deltaTime * 10;
+        // Gain activity XP (water boosts by 0.1% per unit, non-compounding)
+        const waterBonus = 1 + gameState.resources.water * 0.001;
+        gameState.activityXp[gameState.currentActivity] += deltaTime * 10 * waterBonus;
 
         // Check for level up
         const currentLevel = gameState.activityLevels[gameState.currentActivity];
@@ -359,8 +360,9 @@ function gameTick() {
         const currentLevel = gameState.growthLevels[gameState.currentGrowth];
         const multiplier = gameState.rebirthMultipliers[gameState.currentGrowth] || 1;
 
-        // Gain growth XP (multiplied by rebirth bonus)
-        gameState.growthXp[gameState.currentGrowth] += deltaTime * 10 * multiplier;
+        // Gain growth XP (multiplied by rebirth bonus, sunlight boosts by 0.1% per unit)
+        const sunlightBonus = 1 + gameState.resources.sunlight * 0.001;
+        gameState.growthXp[gameState.currentGrowth] += deltaTime * 10 * multiplier * sunlightBonus;
 
         // Check for level up
         const xpReq = getXpRequired(growth.baseXpReq, currentLevel);
