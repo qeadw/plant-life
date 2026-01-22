@@ -163,6 +163,10 @@ let gameState = {
     maxGrowthLevels: {}, // Track max levels for rebirth calculation
 };
 
+// Track last rendered day for progress bar updates
+let lastRenderedDay = 0;
+let needsFullRender = true;
+
 // ============ GAME FUNCTIONS ============
 
 function initializeState() {
@@ -298,7 +302,7 @@ function doRebirth() {
     }
 
     saveGame();
-    renderAll();
+    needsFullRender = true;
 }
 
 // ============ GAME LOOP ============
@@ -312,6 +316,8 @@ function gameTick() {
     const deltaTime = (now - lastTick) / 1000; // seconds
     lastTick = now;
 
+    const previousDay = Math.floor(gameState.day);
+
     // Progress time
     const dayProgress = deltaTime * DAYS_PER_SECOND;
     gameState.day += dayProgress;
@@ -322,6 +328,9 @@ function gameTick() {
         gameState.day -= 365;
         gameState.year++;
     }
+
+    const currentDay = Math.floor(gameState.day);
+    const dayChanged = currentDay !== previousDay;
 
     // Activity progress
     if (gameState.currentActivity && isActivityUnlocked(gameState.currentActivity)) {
@@ -340,6 +349,7 @@ function gameTick() {
         if (gameState.activityXp[gameState.currentActivity] >= xpReq) {
             gameState.activityXp[gameState.currentActivity] -= xpReq;
             gameState.activityLevels[gameState.currentActivity]++;
+            needsFullRender = true; // Level up needs full render
         }
     }
 
@@ -357,10 +367,25 @@ function gameTick() {
         if (gameState.growthXp[gameState.currentGrowth] >= xpReq) {
             gameState.growthXp[gameState.currentGrowth] -= xpReq;
             gameState.growthLevels[gameState.currentGrowth]++;
+            needsFullRender = true; // Level up needs full render
         }
     }
 
-    renderAll();
+    // Auto-save every tick
+    saveGame();
+
+    // Render updates
+    if (needsFullRender) {
+        renderAll();
+        needsFullRender = false;
+        lastRenderedDay = currentDay;
+    } else if (dayChanged) {
+        // Only update progress bars and time once per day
+        renderTime();
+        renderProgressBars();
+        renderResources();
+        lastRenderedDay = currentDay;
+    }
 }
 
 // ============ RENDERING ============
@@ -385,6 +410,30 @@ function renderTime() {
     document.getElementById('year-display').textContent = `Year ${gameState.year}`;
 }
 
+function renderProgressBars() {
+    // Activity progress bar
+    if (gameState.currentActivity) {
+        const level = gameState.activityLevels[gameState.currentActivity];
+        const xp = gameState.activityXp[gameState.currentActivity];
+        const xpReq = getXpRequired(20, level);
+        const percent = (xp / xpReq) * 100;
+        document.getElementById('activity-progress').style.width = `${percent}%`;
+        document.getElementById('activity-level').textContent = `Lv. ${level}`;
+    }
+
+    // Growth progress bar
+    if (gameState.currentGrowth) {
+        const growth = GROWTH_STATS[gameState.currentGrowth];
+        const level = gameState.growthLevels[gameState.currentGrowth];
+        const xp = gameState.growthXp[gameState.currentGrowth];
+        const xpReq = getXpRequired(growth.baseXpReq, level);
+        const percent = (xp / xpReq) * 100;
+        document.getElementById('growth-progress').style.width = `${percent}%`;
+        document.getElementById('growth-level').textContent = `Lv. ${level} → ${level + 1}`;
+        document.getElementById('growth-percent').textContent = `${percent.toFixed(0)}%`;
+    }
+}
+
 function renderActivities() {
     const container = document.getElementById('activity-list');
     container.innerHTML = '';
@@ -394,14 +443,6 @@ function renderActivities() {
         document.getElementById('current-activity-name').textContent = currentActivity.name;
         const rate = getActivityRate(gameState.currentActivity);
         document.getElementById('current-activity-rate').textContent = `+${rate.toFixed(1)} ${currentActivity.resource}/sec`;
-
-        const level = gameState.activityLevels[gameState.currentActivity];
-        const xp = gameState.activityXp[gameState.currentActivity];
-        const xpReq = getXpRequired(20, level);
-        const percent = (xp / xpReq) * 100;
-
-        document.getElementById('activity-progress').style.width = `${percent}%`;
-        document.getElementById('activity-level').textContent = `Lv. ${level}`;
     }
 
     for (const [key, activity] of Object.entries(ACTIVITIES)) {
@@ -426,7 +467,7 @@ function renderActivities() {
         if (unlocked) {
             div.onclick = () => {
                 gameState.currentActivity = key;
-                renderActivities();
+                needsFullRender = true;
             };
         }
 
@@ -443,15 +484,6 @@ function renderGrowth() {
     const currentGrowth = GROWTH_STATS[gameState.currentGrowth];
     if (currentGrowth) {
         document.getElementById('current-growth-name').textContent = currentGrowth.name;
-
-        const level = gameState.growthLevels[gameState.currentGrowth];
-        const xp = gameState.growthXp[gameState.currentGrowth];
-        const xpReq = getXpRequired(currentGrowth.baseXpReq, level);
-        const percent = (xp / xpReq) * 100;
-
-        document.getElementById('growth-progress').style.width = `${percent}%`;
-        document.getElementById('growth-level').textContent = `Lv. ${level} → ${level + 1}`;
-        document.getElementById('growth-percent').textContent = `${percent.toFixed(0)}%`;
     }
 
     for (const [key, growth] of Object.entries(GROWTH_STATS)) {
@@ -481,7 +513,7 @@ function renderGrowth() {
         if (unlocked) {
             div.onclick = () => {
                 gameState.currentGrowth = key;
-                renderGrowth();
+                needsFullRender = true;
             };
         }
 
@@ -547,6 +579,7 @@ function renderStats() {
 function renderAll() {
     renderResources();
     renderTime();
+    renderProgressBars();
     renderActivities();
     renderGrowth();
     renderLifeStage();
@@ -558,10 +591,6 @@ function renderAll() {
 function saveGame() {
     try {
         localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
-        document.getElementById('save-status').textContent = 'Saved!';
-        setTimeout(() => {
-            document.getElementById('save-status').textContent = 'Auto-saves every 30s';
-        }, 2000);
     } catch (e) {
         console.error('Failed to save:', e);
     }
@@ -580,9 +609,33 @@ function loadGame() {
 }
 
 function resetGame() {
-    if (confirm('Are you sure you want to reset ALL progress? This cannot be undone!')) {
+    const input = prompt('Type "RESET" to confirm you want to delete ALL progress:');
+    if (input === 'RESET') {
         localStorage.removeItem(SAVE_KEY);
-        location.reload();
+        // Reset state without reloading
+        gameState = {
+            day: 1,
+            year: 1,
+            totalDays: 0,
+            lifetimes: 1,
+            resources: {
+                water: 0,
+                sunlight: 0,
+                nutrients: 0,
+                moonlight: 0,
+                essence: 0,
+            },
+            currentActivity: 'absorbWater',
+            activityXp: {},
+            activityLevels: {},
+            currentGrowth: 'rootDepth',
+            growthXp: {},
+            growthLevels: {},
+            rebirthMultipliers: {},
+            maxGrowthLevels: {},
+        };
+        initializeState();
+        needsFullRender = true;
     }
 }
 
@@ -596,11 +649,7 @@ function init() {
     // Start game loop
     setInterval(gameTick, TICK_RATE);
 
-    // Auto-save every 30 seconds
-    setInterval(saveGame, 30000);
-
     // Event listeners
-    document.getElementById('save-btn').onclick = saveGame;
     document.getElementById('reset-btn').onclick = resetGame;
     document.getElementById('rebirth-btn').onclick = doRebirth;
 }
