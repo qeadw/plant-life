@@ -349,7 +349,7 @@ function gameTick() {
         if (gameState.activityXp[gameState.currentActivity] >= xpReq) {
             gameState.activityXp[gameState.currentActivity] -= xpReq;
             gameState.activityLevels[gameState.currentActivity]++;
-            needsFullRender = true; // Level up needs full render
+            updateActivityLevelUp(gameState.currentActivity);
         }
     }
 
@@ -367,7 +367,7 @@ function gameTick() {
         if (gameState.growthXp[gameState.currentGrowth] >= xpReq) {
             gameState.growthXp[gameState.currentGrowth] -= xpReq;
             gameState.growthLevels[gameState.currentGrowth]++;
-            needsFullRender = true; // Level up needs full render
+            updateGrowthLevelUp(gameState.currentGrowth);
         }
     }
 
@@ -434,6 +434,89 @@ function renderProgressBars() {
     }
 }
 
+// Targeted update for activity level up - only updates specific elements
+function updateActivityLevelUp(activityKey) {
+    const activity = ACTIVITIES[activityKey];
+    const level = gameState.activityLevels[activityKey];
+
+    // Update the activity item's level display
+    const item = document.querySelector(`.activity-item[data-key="${activityKey}"] .item-level`);
+    if (item) {
+        item.textContent = `Lv. ${level}`;
+    }
+
+    // Update current activity rate display
+    if (gameState.currentActivity === activityKey) {
+        const rate = getActivityRate(activityKey);
+        document.getElementById('current-activity-rate').textContent = `+${rate.toFixed(1)} ${activity.resource}/sec`;
+    }
+
+    // Check if any new activities unlocked
+    checkForNewUnlocks();
+}
+
+// Targeted update for growth level up - only updates specific elements
+function updateGrowthLevelUp(growthKey) {
+    const growth = GROWTH_STATS[growthKey];
+    const level = gameState.growthLevels[growthKey];
+    const multiplier = gameState.rebirthMultipliers[growthKey] || 1;
+
+    // Update the growth item's level display
+    const item = document.querySelector(`.growth-item[data-key="${growthKey}"] .item-level`);
+    if (item) {
+        item.textContent = `Lv. ${level}`;
+    }
+
+    // Update life stage display
+    const stage = getLifeStage();
+    const totalLevels = getTotalLevels();
+    document.getElementById('life-stage').textContent = stage.name;
+    document.getElementById('total-levels').textContent = `Total Levels: ${totalLevels}`;
+
+    // Update rebirth button state if needed
+    const rebirthBtn = document.getElementById('rebirth-btn');
+    const rebirthInfo = document.getElementById('rebirth-info');
+    if (canRebirth()) {
+        rebirthBtn.disabled = false;
+    } else {
+        rebirthInfo.textContent = `Reach Ancient stage (100 total levels) to rebirth. Current: ${totalLevels}`;
+    }
+
+    // Check if any new activities/growth unlocked
+    checkForNewUnlocks();
+}
+
+// Check if new activities or growth stats have been unlocked
+function checkForNewUnlocks() {
+    let hasNewUnlock = false;
+
+    // Check activities
+    for (const key of Object.keys(ACTIVITIES)) {
+        const item = document.querySelector(`.activity-item[data-key="${key}"]`);
+        if (item && item.classList.contains('locked') && isActivityUnlocked(key)) {
+            hasNewUnlock = true;
+            break;
+        }
+    }
+
+    // Check growth
+    if (!hasNewUnlock) {
+        for (const key of Object.keys(GROWTH_STATS)) {
+            const item = document.querySelector(`.growth-item[data-key="${key}"]`);
+            if (item && item.classList.contains('locked') && isGrowthUnlocked(key)) {
+                hasNewUnlock = true;
+                break;
+            }
+        }
+    }
+
+    // Only do full render if something new unlocked
+    if (hasNewUnlock) {
+        renderActivities();
+        renderGrowth();
+    }
+}
+
 function renderActivities() {
     const container = document.getElementById('activity-list');
     container.innerHTML = '';
@@ -452,6 +535,7 @@ function renderActivities() {
 
         const div = document.createElement('div');
         div.className = `activity-item ${isActive ? 'active' : ''} ${!unlocked ? 'locked' : ''}`;
+        div.setAttribute('data-key', key);
 
         let reqText = '';
         if (!unlocked && activity.unlockReq) {
@@ -466,13 +550,37 @@ function renderActivities() {
 
         if (unlocked) {
             div.onclick = () => {
+                const prevActivity = gameState.currentActivity;
                 gameState.currentActivity = key;
-                needsFullRender = true;
+                updateActivitySelection(prevActivity, key);
             };
         }
 
         container.appendChild(div);
     }
+}
+
+// Update activity selection without full re-render
+function updateActivitySelection(prevKey, newKey) {
+    // Remove active class from previous
+    if (prevKey) {
+        const prevItem = document.querySelector(`.activity-item[data-key="${prevKey}"]`);
+        if (prevItem) prevItem.classList.remove('active');
+    }
+
+    // Add active class to new
+    const newItem = document.querySelector(`.activity-item[data-key="${newKey}"]`);
+    if (newItem) newItem.classList.add('active');
+
+    // Update current activity display
+    const activity = ACTIVITIES[newKey];
+    document.getElementById('current-activity-name').textContent = activity.name;
+    const rate = getActivityRate(newKey);
+    document.getElementById('current-activity-rate').textContent = `+${rate.toFixed(1)} ${activity.resource}/sec`;
+
+    // Update progress bar display
+    const level = gameState.activityLevels[newKey];
+    document.getElementById('activity-level').textContent = `Lv. ${level}`;
 }
 
 function renderGrowth() {
@@ -496,6 +604,7 @@ function renderGrowth() {
 
         const div = document.createElement('div');
         div.className = `growth-item ${isActive ? 'active' : ''} ${!unlocked ? 'locked' : ''}`;
+        div.setAttribute('data-key', key);
 
         let reqText = '';
         if (!unlocked && growth.unlockReq) {
@@ -512,13 +621,40 @@ function renderGrowth() {
 
         if (unlocked) {
             div.onclick = () => {
+                const prevGrowth = gameState.currentGrowth;
                 gameState.currentGrowth = key;
-                needsFullRender = true;
+                updateGrowthSelection(prevGrowth, key);
             };
         }
 
         container.appendChild(div);
     }
+}
+
+// Update growth selection without full re-render
+function updateGrowthSelection(prevKey, newKey) {
+    // Remove active class from previous
+    if (prevKey) {
+        const prevItem = document.querySelector(`.growth-item[data-key="${prevKey}"]`);
+        if (prevItem) prevItem.classList.remove('active');
+    }
+
+    // Add active class to new
+    const newItem = document.querySelector(`.growth-item[data-key="${newKey}"]`);
+    if (newItem) newItem.classList.add('active');
+
+    // Update current growth display
+    const growth = GROWTH_STATS[newKey];
+    document.getElementById('current-growth-name').textContent = growth.name;
+
+    // Update progress bar display
+    const level = gameState.growthLevels[newKey];
+    const xp = gameState.growthXp[newKey];
+    const xpReq = getXpRequired(growth.baseXpReq, level);
+    const percent = (xp / xpReq) * 100;
+    document.getElementById('growth-progress').style.width = `${percent}%`;
+    document.getElementById('growth-level').textContent = `Lv. ${level} → ${level + 1}`;
+    document.getElementById('growth-percent').textContent = `${percent.toFixed(0)}%`;
 }
 
 function renderLifeStage() {
