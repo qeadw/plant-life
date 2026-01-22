@@ -157,10 +157,6 @@ let gameState = {
     currentGrowth: 'rootDepth',
     growthXp: {},
     growthLevels: {},
-
-    // Rebirth multipliers (permanent)
-    rebirthMultipliers: {},
-    maxGrowthLevels: {}, // Track max levels for rebirth calculation
 };
 
 // Track last rendered day for progress bar updates
@@ -180,8 +176,6 @@ function initializeState() {
     for (const key of Object.keys(GROWTH_STATS)) {
         if (gameState.growthXp[key] === undefined) gameState.growthXp[key] = 0;
         if (gameState.growthLevels[key] === undefined) gameState.growthLevels[key] = 0;
-        if (gameState.rebirthMultipliers[key] === undefined) gameState.rebirthMultipliers[key] = 1;
-        if (gameState.maxGrowthLevels[key] === undefined) gameState.maxGrowthLevels[key] = 0;
     }
 }
 
@@ -272,33 +266,8 @@ function showDeathModal() {
     const age = getCurrentAge();
     const modal = document.getElementById('death-modal');
     const ageSpan = document.getElementById('death-age');
-    const gainsDiv = document.getElementById('death-gains');
 
     ageSpan.textContent = age;
-
-    // Show what multipliers will be gained
-    let gainsHtml = '<h3>Multipliers Gained:</h3>';
-    let hasGains = false;
-
-    for (const key of Object.keys(GROWTH_STATS)) {
-        const level = gameState.growthLevels[key];
-        if (level > 0) {
-            hasGains = true;
-            const mult = 1 + level * 0.05;
-            const currentMult = gameState.rebirthMultipliers[key] || 1;
-            const isNew = mult > currentMult;
-            gainsHtml += `<div class="gain-item">
-                <span>${GROWTH_STATS[key].name}</span>
-                <span class="gain-value">${mult.toFixed(2)}x${isNew ? ' (new!)' : ''}</span>
-            </div>`;
-        }
-    }
-
-    if (!hasGains) {
-        gainsHtml += '<div style="color: #7a8a80;">No multipliers this life. Level up growth stats!</div>';
-    }
-
-    gainsDiv.innerHTML = gainsHtml;
     modal.classList.remove('hidden');
 }
 
@@ -310,26 +279,7 @@ function hideDeathModal() {
 }
 
 function doRebirth() {
-    // Calculate new multipliers based on levels (5% per level)
-    for (const key of Object.keys(GROWTH_STATS)) {
-        const currentLevel = gameState.growthLevels[key] || 0;
-        const maxLevel = Math.max(gameState.maxGrowthLevels[key] || 0, currentLevel);
-        gameState.maxGrowthLevels[key] = maxLevel;
-
-        // Formula: 1 + maxLevel * 0.05 (5% per level)
-        const newMultiplier = 1 + maxLevel * 0.05;
-        if (newMultiplier > gameState.rebirthMultipliers[key]) {
-            gameState.rebirthMultipliers[key] = newMultiplier;
-        }
-    }
-
-    // Ancient Memory bonus
-    const ancientBonus = 1 + (gameState.growthLevels.ancientMemory || 0) * 0.02;
-    for (const key of Object.keys(GROWTH_STATS)) {
-        gameState.rebirthMultipliers[key] *= ancientBonus;
-    }
-
-    // Reset progress but keep multipliers
+    // Reset for new life
     gameState.day = 1;
     gameState.year = 1;
     gameState.lifetimes++;
@@ -418,11 +368,10 @@ function gameTick() {
     if (gameState.currentGrowth && isGrowthUnlocked(gameState.currentGrowth)) {
         const growth = GROWTH_STATS[gameState.currentGrowth];
         const currentLevel = gameState.growthLevels[gameState.currentGrowth];
-        const multiplier = gameState.rebirthMultipliers[gameState.currentGrowth] || 1;
 
-        // Gain growth XP (multiplied by rebirth bonus, sunlight boosts by 0.1% per unit)
+        // Gain growth XP (sunlight boosts by 0.1% per unit)
         const sunlightBonus = 1 + gameState.resources.sunlight * 0.001;
-        gameState.growthXp[gameState.currentGrowth] += deltaTime * 10 * multiplier * sunlightBonus;
+        gameState.growthXp[gameState.currentGrowth] += deltaTime * 10 * sunlightBonus;
 
         // Check for level up
         const xpReq = getXpRequired(growth.baseXpReq, currentLevel);
@@ -520,9 +469,7 @@ function updateActivityLevelUp(activityKey) {
 
 // Targeted update for growth level up - only updates specific elements
 function updateGrowthLevelUp(growthKey) {
-    const growth = GROWTH_STATS[growthKey];
     const level = gameState.growthLevels[growthKey];
-    const multiplier = gameState.rebirthMultipliers[growthKey] || 1;
 
     // Update the growth item's level display
     const item = document.querySelector(`.growth-item[data-key="${growthKey}"] .item-level`);
@@ -550,25 +497,7 @@ function updateLifespanDisplay() {
     const daysRemaining = Math.max(0, lifespan - currentAge);
 
     const rebirthInfo = document.getElementById('rebirth-info');
-
-    let info = `<strong>Lifespan:</strong> ${currentAge} / ${lifespan} days (${daysRemaining} remaining)`;
-    info += `<br><br><strong>On death, you will gain:</strong>`;
-
-    let hasLevels = false;
-    for (const key of Object.keys(GROWTH_STATS)) {
-        const level = gameState.growthLevels[key];
-        if (level > 0) {
-            hasLevels = true;
-            const mult = 1 + level * 0.05;
-            info += `<br>${GROWTH_STATS[key].name}: ${mult.toFixed(2)}x`;
-        }
-    }
-
-    if (!hasLevels) {
-        info += `<br><em>Level up growth stats to gain multipliers!</em>`;
-    }
-
-    rebirthInfo.innerHTML = info;
+    rebirthInfo.innerHTML = `<strong>Lifespan:</strong> ${currentAge} / ${lifespan} days (${daysRemaining} remaining)`;
 }
 
 // Check if new activities or growth stats have been unlocked
@@ -683,7 +612,6 @@ function renderGrowth() {
         const unlocked = isGrowthUnlocked(key);
         const level = gameState.growthLevels[key] || 0;
         const isActive = gameState.currentGrowth === key;
-        const multiplier = gameState.rebirthMultipliers[key] || 1;
 
         const container = growth.category === 'physical' ? physicalContainer : magicalContainer;
 
@@ -697,10 +625,8 @@ function renderGrowth() {
             reqText = `<span class="item-req">Requires ${reqGrowth.name} Lv.${growth.unlockReq.level}</span>`;
         }
 
-        let multiplierText = multiplier > 1 ? ` (${multiplier.toFixed(1)}x)` : '';
-
         div.innerHTML = `
-            <span class="item-name">${growth.name}${multiplierText}</span>
+            <span class="item-name">${growth.name}</span>
             <span class="item-level">${unlocked ? `Lv. ${level}` : ''} ${reqText}</span>
         `;
 
@@ -745,64 +671,23 @@ function updateGrowthSelection(prevKey, newKey) {
 function renderLifeStage() {
     const stage = getLifeStage();
     const totalLevels = getTotalLevels();
-    const lifespan = getLifespan();
-    const currentAge = getCurrentAge();
-    const daysRemaining = Math.max(0, lifespan - currentAge);
 
     document.getElementById('life-stage').textContent = stage.name;
     document.getElementById('total-levels').textContent = `Total Levels: ${totalLevels}`;
 
-    const rebirthBtn = document.getElementById('rebirth-btn');
-    const rebirthInfo = document.getElementById('rebirth-info');
+    // Hide manual rebirth button
+    document.getElementById('rebirth-btn').style.display = 'none';
 
-    // Hide manual rebirth button - rebirth is automatic now
-    rebirthBtn.style.display = 'none';
-
-    // Show lifespan info and potential multipliers
-    let info = `<strong>Lifespan:</strong> ${currentAge} / ${lifespan} days (${daysRemaining} remaining)`;
-    info += `<br><br><strong>On death, you will gain:</strong>`;
-
-    let hasLevels = false;
-    for (const key of Object.keys(GROWTH_STATS)) {
-        const level = gameState.growthLevels[key];
-        if (level > 0) {
-            hasLevels = true;
-            const mult = 1 + level * 0.05; // 5% per level
-            info += `<br>${GROWTH_STATS[key].name}: ${mult.toFixed(2)}x`;
-        }
-    }
-
-    if (!hasLevels) {
-        info += `<br><em>Level up growth stats to gain multipliers!</em>`;
-    }
-
-    rebirthInfo.innerHTML = info;
+    // Show lifespan info
+    updateLifespanDisplay();
 }
 
 function renderStats() {
     document.getElementById('lifetimes').textContent = gameState.lifetimes;
     document.getElementById('total-days').textContent = formatNumber(gameState.totalDays);
 
-    const multipliersDiv = document.getElementById('multipliers');
-    multipliersDiv.innerHTML = '<strong>Rebirth Multipliers:</strong>';
-
-    let hasMultipliers = false;
-    for (const [key, mult] of Object.entries(gameState.rebirthMultipliers)) {
-        if (mult > 1) {
-            hasMultipliers = true;
-            const growth = GROWTH_STATS[key];
-            multipliersDiv.innerHTML += `
-                <div class="multiplier-item">
-                    <span>${growth.name}</span>
-                    <span class="multiplier-value">${mult.toFixed(1)}x</span>
-                </div>
-            `;
-        }
-    }
-
-    if (!hasMultipliers) {
-        multipliersDiv.innerHTML += '<div style="color: #7a8a80; margin-top: 10px;">None yet - rebirth to gain multipliers!</div>';
-    }
+    // Hide multipliers section
+    document.getElementById('multipliers').style.display = 'none';
 }
 
 function renderAll() {
@@ -860,8 +745,6 @@ function resetGame() {
             currentGrowth: 'rootDepth',
             growthXp: {},
             growthLevels: {},
-            rebirthMultipliers: {},
-            maxGrowthLevels: {},
         };
         initializeState();
         needsFullRender = true;
