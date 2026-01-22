@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Life</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Plant Life</h1>
+            <div class="time-display">
+                <span id="day-display">Day 1</span>
+                <span id="year-display">Year 1</span>
+            </div>
+        </header>
+
+        <section class="resources">
+            <h2>Resources</h2>
+            <div class="resource-grid">
+                <div class="resource">
+                    <span class="resource-icon">💧</span>
+                    <span class="resource-name">Water</span>
+                    <span class="resource-value" id="water">0</span>
+                </div>
+                <div class="resource">
+                    <span class="resource-icon">☀️</span>
+                    <span class="resource-name">Sunlight</span>
+                    <span class="resource-value" id="sunlight">0</span>
+                </div>
+                <div class="resource">
+                    <span class="resource-icon">🌿</span>
+                    <span class="resource-name">Nutrients</span>
+                    <span class="resource-value" id="nutrients">0</span>
+                </div>
+                <div class="resource">
+                    <span class="resource-icon">🌙</span>
+                    <span class="resource-name">Moonlight</span>
+                    <span class="resource-value" id="moonlight">0</span>
+                </div>
+                <div class="resource">
+                    <span class="resource-icon">✨</span>
+                    <span class="resource-name">Essence</span>
+                    <span class="resource-value" id="essence">0</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="activities">
+            <h2>Activities</h2>
+            <div class="current-activity">
+                <span>Current: </span>
+                <span id="current-activity-name">None</span>
+                <span id="current-activity-rate"></span>
+            </div>
+            <div class="activity-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="activity-progress"></div>
+                </div>
+                <span id="activity-level">Lv. 0</span>
+            </div>
+            <div class="activity-list" id="activity-list">
+                <!-- Activities populated by JS -->
+            </div>
+        </section>
+
+        <section class="growth">
+            <h2>Growth Focus</h2>
+            <div class="current-growth">
+                <span>Focusing: </span>
+                <span id="current-growth-name">None</span>
+            </div>
+            <div class="growth-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="growth-progress"></div>
+                </div>
+                <span id="growth-level">Lv. 0</span>
+                <span id="growth-percent">0%</span>
+            </div>
+
+            <div class="growth-columns">
+                <div class="growth-column">
+                    <h3>Physical</h3>
+                    <div id="physical-growth-list">
+                        <!-- Physical growth options populated by JS -->
+                    </div>
+                </div>
+                <div class="growth-column">
+                    <h3>Magical</h3>
+                    <div id="magical-growth-list">
+                        <!-- Magical growth options populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="life-stage">
+            <h2>Life Stage</h2>
+            <div class="stage-display">
+                <span id="life-stage">Seed</span>
+                <span id="total-levels">Total Levels: 0</span>
+            </div>
+            <button id="rebirth-btn" class="rebirth-btn" disabled>
+                Wither & Rebirth
+            </button>
+            <div class="rebirth-info" id="rebirth-info">
+                Reach Ancient stage to rebirth
+            </div>
+        </section>
+
+        <section class="stats">
+            <h2>Statistics</h2>
+            <div class="stats-grid">
+                <div class="stat">
+                    <span class="stat-name">Lifetimes</span>
+                    <span class="stat-value" id="lifetimes">1</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-name">Total Days Lived</span>
+                    <span class="stat-value" id="total-days">0</span>
+                </div>
+            </div>
+            <div class="multipliers" id="multipliers">
+                <!-- Rebirth multipliers shown here -->
+            </div>
+        </section>
+
+        <footer>
+            <button id="save-btn">Save</button>
+            <button id="reset-btn">Reset Game</button>
+            <span id="save-status">Auto-saves every 30s</span>
+        </footer>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>

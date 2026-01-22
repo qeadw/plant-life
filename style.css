@@ -1,0 +1,358 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    min-height: 100vh;
+    color: #e8e8e8;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #2d4a3e;
+}
+
+header h1 {
+    color: #7ec699;
+    font-size: 2rem;
+}
+
+.time-display {
+    display: flex;
+    gap: 20px;
+    font-size: 1.1rem;
+    color: #a8d5ba;
+}
+
+section {
+    background: rgba(30, 50, 45, 0.6);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid #2d4a3e;
+}
+
+section h2 {
+    color: #7ec699;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+    border-bottom: 1px solid #2d4a3e;
+    padding-bottom: 8px;
+}
+
+section h3 {
+    color: #a8d5ba;
+    margin-bottom: 10px;
+    font-size: 1rem;
+}
+
+/* Resources */
+.resource-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 15px;
+}
+
+.resource {
+    background: rgba(40, 70, 60, 0.5);
+    padding: 12px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.resource-icon {
+    font-size: 1.5rem;
+}
+
+.resource-name {
+    font-size: 0.85rem;
+    color: #a8d5ba;
+}
+
+.resource-value {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #7ec699;
+}
+
+/* Activities */
+.current-activity {
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+}
+
+#current-activity-name {
+    color: #7ec699;
+    font-weight: bold;
+}
+
+#current-activity-rate {
+    color: #a8d5ba;
+    margin-left: 10px;
+}
+
+.activity-progress, .growth-progress {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.progress-bar {
+    flex: 1;
+    height: 20px;
+    background: rgba(40, 70, 60, 0.8);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #2d4a3e;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4a9f6e 0%, #7ec699 100%);
+    width: 0%;
+    transition: width 0.1s ease;
+    border-radius: 10px;
+}
+
+.activity-list, #physical-growth-list, #magical-growth-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.activity-item, .growth-item {
+    background: rgba(40, 70, 60, 0.4);
+    padding: 12px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid transparent;
+}
+
+.activity-item:hover:not(.locked), .growth-item:hover:not(.locked) {
+    background: rgba(60, 100, 80, 0.5);
+    border-color: #4a9f6e;
+}
+
+.activity-item.active, .growth-item.active {
+    background: rgba(74, 159, 110, 0.3);
+    border-color: #7ec699;
+}
+
+.activity-item.locked, .growth-item.locked {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.item-name {
+    font-weight: 500;
+}
+
+.item-level {
+    color: #a8d5ba;
+    font-size: 0.9rem;
+}
+
+.item-req {
+    color: #e67e7e;
+    font-size: 0.8rem;
+}
+
+/* Growth columns */
+.growth-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.growth-column {
+    background: rgba(30, 50, 45, 0.4);
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.current-growth {
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+}
+
+#current-growth-name {
+    color: #7ec699;
+    font-weight: bold;
+}
+
+#growth-percent {
+    color: #a8d5ba;
+}
+
+/* Life Stage */
+.stage-display {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+}
+
+#life-stage {
+    color: #7ec699;
+    font-weight: bold;
+    font-size: 1.4rem;
+}
+
+#total-levels {
+    color: #a8d5ba;
+}
+
+.rebirth-btn {
+    width: 100%;
+    padding: 15px;
+    font-size: 1.1rem;
+    background: linear-gradient(135deg, #8b5a9f 0%, #6b4a7f 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 10px;
+}
+
+.rebirth-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #9b6aaf 0%, #7b5a8f 100%);
+    transform: translateY(-2px);
+}
+
+.rebirth-btn:disabled {
+    background: rgba(60, 60, 80, 0.5);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.rebirth-info {
+    text-align: center;
+    color: #a8a8c8;
+    font-size: 0.9rem;
+}
+
+/* Stats */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.stat {
+    background: rgba(40, 70, 60, 0.4);
+    padding: 12px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.stat-name {
+    color: #a8d5ba;
+}
+
+.stat-value {
+    color: #7ec699;
+    font-weight: bold;
+}
+
+.multipliers {
+    background: rgba(40, 50, 70, 0.4);
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.multiplier-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(100, 120, 140, 0.2);
+}
+
+.multiplier-item:last-child {
+    border-bottom: none;
+}
+
+.multiplier-value {
+    color: #9fa8da;
+    font-weight: bold;
+}
+
+/* Footer */
+footer {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    justify-content: center;
+    padding-top: 10px;
+}
+
+footer button {
+    padding: 10px 25px;
+    font-size: 1rem;
+    background: rgba(60, 90, 80, 0.6);
+    color: #e8e8e8;
+    border: 1px solid #4a6a5e;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+footer button:hover {
+    background: rgba(80, 120, 100, 0.6);
+}
+
+#reset-btn {
+    background: rgba(100, 60, 60, 0.6);
+    border-color: #8a5a5a;
+}
+
+#reset-btn:hover {
+    background: rgba(120, 70, 70, 0.6);
+}
+
+#save-status {
+    color: #7a8a80;
+    font-size: 0.9rem;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .growth-columns {
+        grid-template-columns: 1fr;
+    }
+
+    .resource-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    header {
+        flex-direction: column;
+        gap: 10px;
+    }
+}
