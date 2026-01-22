@@ -341,6 +341,100 @@ footer button:hover {
     font-size: 0.9rem;
 }
 
+/* Death Modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 2px solid #4a3a2a;
+    border-radius: 16px;
+    padding: 30px 40px;
+    text-align: center;
+    max-width: 400px;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.death-modal-content h2 {
+    color: #c9a86c;
+    font-size: 1.8rem;
+    margin-bottom: 15px;
+}
+
+.death-message {
+    color: #a89080;
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+}
+
+.death-age {
+    color: #7ec699;
+    font-size: 1.3rem;
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+
+.death-gains {
+    background: rgba(40, 70, 60, 0.4);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.death-gains h3 {
+    color: #a8d5ba;
+    font-size: 1rem;
+    margin-bottom: 10px;
+}
+
+.death-gains .gain-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    color: #e8e8e8;
+}
+
+.death-gains .gain-value {
+    color: #9fa8da;
+    font-weight: bold;
+}
+
+.continue-btn {
+    padding: 12px 30px;
+    font-size: 1.1rem;
+    background: linear-gradient(135deg, #4a9f6e 0%, #2d7a4a 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.continue-btn:hover {
+    background: linear-gradient(135deg, #5ab07e 0%, #3d8a5a 100%);
+    transform: translateY(-2px);
+}
+
 /* Responsive */
 @media (max-width: 600px) {
     .growth-columns {

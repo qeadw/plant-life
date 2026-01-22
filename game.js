@@ -260,7 +260,53 @@ function getCurrentAge() {
 }
 
 function isLifespanExceeded() {
-    return getCurrentAge() >= getLifespan();
+    return getCurrentAge() >= getLifespan() && !deathModalShowing;
+}
+
+let deathModalShowing = false;
+
+function showDeathModal() {
+    if (deathModalShowing) return;
+    deathModalShowing = true;
+
+    const age = getCurrentAge();
+    const modal = document.getElementById('death-modal');
+    const ageSpan = document.getElementById('death-age');
+    const gainsDiv = document.getElementById('death-gains');
+
+    ageSpan.textContent = age;
+
+    // Show what multipliers will be gained
+    let gainsHtml = '<h3>Multipliers Gained:</h3>';
+    let hasGains = false;
+
+    for (const key of Object.keys(GROWTH_STATS)) {
+        const level = gameState.growthLevels[key];
+        if (level > 0) {
+            hasGains = true;
+            const mult = 1 + level * 0.05;
+            const currentMult = gameState.rebirthMultipliers[key] || 1;
+            const isNew = mult > currentMult;
+            gainsHtml += `<div class="gain-item">
+                <span>${GROWTH_STATS[key].name}</span>
+                <span class="gain-value">${mult.toFixed(2)}x${isNew ? ' (new!)' : ''}</span>
+            </div>`;
+        }
+    }
+
+    if (!hasGains) {
+        gainsHtml += '<div style="color: #7a8a80;">No multipliers this life. Level up growth stats!</div>';
+    }
+
+    gainsDiv.innerHTML = gainsHtml;
+    modal.classList.remove('hidden');
+}
+
+function hideDeathModal() {
+    const modal = document.getElementById('death-modal');
+    modal.classList.add('hidden');
+    deathModalShowing = false;
+    doRebirth();
 }
 
 function doRebirth() {
@@ -342,8 +388,8 @@ function gameTick() {
 
     // Check for death (lifespan exceeded)
     if (isLifespanExceeded()) {
-        doRebirth();
-        return; // Skip rest of tick, fresh start next tick
+        showDeathModal();
+        return; // Skip rest of tick, wait for modal
     }
 
     // Activity progress
@@ -834,7 +880,7 @@ function init() {
 
     // Event listeners
     document.getElementById('reset-btn').onclick = resetGame;
-    document.getElementById('rebirth-btn').onclick = doRebirth;
+    document.getElementById('death-continue-btn').onclick = hideDeathModal;
 }
 
 // Start the game
