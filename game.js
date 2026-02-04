@@ -720,9 +720,31 @@ function renderAll() {
 
 // ============ SAVE / LOAD ============
 
+const SAVE_VERSION = 'PL1:';
+const OBF_KEY = 'PlantLife2024';
+
+function obfuscate(data) {
+    let result = '';
+    for (let i = 0; i < data.length; i++) {
+        result += String.fromCharCode(data.charCodeAt(i) ^ OBF_KEY.charCodeAt(i % OBF_KEY.length));
+    }
+    return SAVE_VERSION + btoa(result);
+}
+
+function deobfuscate(data) {
+    if (!data.startsWith(SAVE_VERSION)) return data; // Legacy save
+    const encoded = data.slice(SAVE_VERSION.length);
+    const decoded = atob(encoded);
+    let result = '';
+    for (let i = 0; i < decoded.length; i++) {
+        result += String.fromCharCode(decoded.charCodeAt(i) ^ OBF_KEY.charCodeAt(i % OBF_KEY.length));
+    }
+    return result;
+}
+
 function saveGame() {
     try {
-        localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
+        localStorage.setItem(SAVE_KEY, obfuscate(JSON.stringify(gameState)));
     } catch (e) {
         console.error('Failed to save:', e);
     }
@@ -732,7 +754,7 @@ function loadGame() {
     try {
         const saved = localStorage.getItem(SAVE_KEY);
         if (saved) {
-            const data = JSON.parse(saved);
+            const data = JSON.parse(deobfuscate(saved));
             gameState = { ...gameState, ...data };
         }
     } catch (e) {
@@ -786,7 +808,7 @@ function createSaveModal() {
             <div style="display: flex; flex-direction: column; gap: 10px;">
                 <button id="export-save-btn" style="padding: 12px; font-size: 1rem; cursor: pointer; background: #4a9; border: none; border-radius: 8px; color: white;">📥 Export Save</button>
                 <button id="import-save-btn" style="padding: 12px; font-size: 1rem; cursor: pointer; background: #49a; border: none; border-radius: 8px; color: white;">📤 Import Save</button>
-                <input type="file" id="import-file-input" accept=".json" style="display: none;">
+                <input type="file" id="import-file-input" accept=".sav" style="display: none;">
                 <button id="close-save-modal" style="padding: 12px; font-size: 1rem; cursor: pointer; background: #666; border: none; border-radius: 8px; color: white; margin-top: 10px;">Close</button>
             </div>
         </div>
@@ -816,11 +838,11 @@ function exportSave() {
         alert('No save data found!');
         return;
     }
-    const blob = new Blob([saveData], { type: 'application/json' });
+    const blob = new Blob([saveData], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `plant-life-save-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `plant-life-save-${new Date().toISOString().split('T')[0]}.sav`;
     a.click();
     URL.revokeObjectURL(url);
 }
@@ -832,8 +854,13 @@ function importSave(e) {
     const reader = new FileReader();
     reader.onload = (event) => {
         try {
-            const data = JSON.parse(event.target.result);
-            localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+            const saveData = event.target.result;
+            // Validate obfuscated format
+            if (!saveData.startsWith('PL1:')) {
+                alert('Invalid save file format!');
+                return;
+            }
+            localStorage.setItem(SAVE_KEY, saveData);
             alert('Save imported successfully! Refreshing...');
             location.reload();
         } catch (err) {
