@@ -157,6 +157,9 @@ let gameState = {
     currentGrowth: 'rootDepth',
     growthXp: {},
     growthLevels: {},
+
+    // Rebirth bonus: 10% more XP per level from previous life
+    xpMultiplier: 1,
 };
 
 // Track last rendered day for progress bar updates
@@ -244,8 +247,11 @@ function getLifeStage() {
 }
 
 function getLifespan() {
-    // Base lifespan of 1 year (365 days) + 0.1 days per nutrient
-    return 365 + Math.floor(gameState.resources.nutrients * 0.1);
+    // Base lifespan of 1 year (365 days) + logarithmic bonus from nutrients
+    // Logarithmic scaling: early nutrients matter more, diminishing returns at high amounts
+    const nutrients = gameState.resources.nutrients;
+    const nutrientBonus = nutrients > 0 ? Math.floor(Math.log10(nutrients + 1) * 200) : 0;
+    return 365 + nutrientBonus;
 }
 
 function getCurrentAge() {
@@ -279,6 +285,10 @@ function hideDeathModal() {
 }
 
 function doRebirth() {
+    // Calculate XP multiplier for next life: 10% more XP per total level at death
+    const totalLevels = getTotalLevels();
+    gameState.xpMultiplier = 1 + (totalLevels * 0.10);
+
     // Reset for new life
     gameState.day = 1;
     gameState.year = 1;
@@ -351,8 +361,9 @@ function gameTick() {
         gameState.resources[resource] += rate * deltaTime;
 
         // Gain activity XP (water boosts by 0.1% per unit, non-compounding)
+        // Also apply xpMultiplier from previous life (10% per level at death)
         const waterBonus = 1 + gameState.resources.water * 0.001;
-        gameState.activityXp[gameState.currentActivity] += deltaTime * 10 * waterBonus;
+        gameState.activityXp[gameState.currentActivity] += deltaTime * 10 * waterBonus * gameState.xpMultiplier;
 
         // Check for level up
         const currentLevel = gameState.activityLevels[gameState.currentActivity];
@@ -370,8 +381,9 @@ function gameTick() {
         const currentLevel = gameState.growthLevels[gameState.currentGrowth];
 
         // Gain growth XP (sunlight boosts by 0.1% per unit)
+        // Also apply xpMultiplier from previous life (10% per level at death)
         const sunlightBonus = 1 + gameState.resources.sunlight * 0.001;
-        gameState.growthXp[gameState.currentGrowth] += deltaTime * 10 * sunlightBonus;
+        gameState.growthXp[gameState.currentGrowth] += deltaTime * 10 * sunlightBonus * gameState.xpMultiplier;
 
         // Check for level up
         const xpReq = getXpRequired(growth.baseXpReq, currentLevel);
@@ -686,8 +698,14 @@ function renderStats() {
     document.getElementById('lifetimes').textContent = gameState.lifetimes;
     document.getElementById('total-days').textContent = formatNumber(gameState.totalDays);
 
-    // Hide multipliers section
-    document.getElementById('multipliers').style.display = 'none';
+    // Show XP multiplier from rebirth
+    const multipliers = document.getElementById('multipliers');
+    if (gameState.xpMultiplier > 1) {
+        multipliers.style.display = 'block';
+        multipliers.innerHTML = `<div class="stat"><span class="stat-name">XP Bonus</span><span class="stat-value">${((gameState.xpMultiplier - 1) * 100).toFixed(0)}%</span></div>`;
+    } else {
+        multipliers.style.display = 'none';
+    }
 }
 
 function renderAll() {
@@ -745,9 +763,92 @@ function resetGame() {
             currentGrowth: 'rootDepth',
             growthXp: {},
             growthLevels: {},
+            xpMultiplier: 1,
         };
         initializeState();
         needsFullRender = true;
+    }
+}
+
+// ============ SAVE EXPORT/IMPORT ============
+
+let saveBuffer = '';
+let saveModalShowing = false;
+
+function createSaveModal() {
+    const modal = document.createElement('div');
+    modal.id = 'save-modal';
+    modal.className = 'modal hidden';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <h2>Save Management</h2>
+            <p style="margin-bottom: 15px; color: #aaa;">Export your save to back it up, or import a previous save.</p>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button id="export-save-btn" style="padding: 12px; font-size: 1rem; cursor: pointer; background: #4a9; border: none; border-radius: 8px; color: white;">📥 Export Save</button>
+                <button id="import-save-btn" style="padding: 12px; font-size: 1rem; cursor: pointer; background: #49a; border: none; border-radius: 8px; color: white;">📤 Import Save</button>
+                <input type="file" id="import-file-input" accept=".json" style="display: none;">
+                <button id="close-save-modal" style="padding: 12px; font-size: 1rem; cursor: pointer; background: #666; border: none; border-radius: 8px; color: white; margin-top: 10px;">Close</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    document.getElementById('close-save-modal').onclick = hideSaveModal;
+    document.getElementById('export-save-btn').onclick = exportSave;
+    document.getElementById('import-save-btn').onclick = () => document.getElementById('import-file-input').click();
+    document.getElementById('import-file-input').onchange = importSave;
+}
+
+function showSaveModal() {
+    if (saveModalShowing) return;
+    saveModalShowing = true;
+    document.getElementById('save-modal').classList.remove('hidden');
+}
+
+function hideSaveModal() {
+    document.getElementById('save-modal').classList.add('hidden');
+    saveModalShowing = false;
+}
+
+function exportSave() {
+    const saveData = localStorage.getItem(SAVE_KEY);
+    if (!saveData) {
+        alert('No save data found!');
+        return;
+    }
+    const blob = new Blob([saveData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `plant-life-save-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function importSave(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        try {
+            const data = JSON.parse(event.target.result);
+            localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+            alert('Save imported successfully! Refreshing...');
+            location.reload();
+        } catch (err) {
+            alert('Invalid save file!');
+        }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+}
+
+function handleSaveKeypress(e) {
+    saveBuffer = (saveBuffer + e.key).slice(-4);
+    if (saveBuffer.toLowerCase() === 'save') {
+        showSaveModal();
+        saveBuffer = '';
     }
 }
 
@@ -757,6 +858,7 @@ function init() {
     loadGame();
     initializeState();
     renderAll();
+    createSaveModal();
 
     // Start game loop
     setInterval(gameTick, TICK_RATE);
@@ -764,6 +866,7 @@ function init() {
     // Event listeners
     document.getElementById('reset-btn').onclick = resetGame;
     document.getElementById('death-continue-btn').onclick = hideDeathModal;
+    document.addEventListener('keydown', handleSaveKeypress);
 }
 
 // Start the game
